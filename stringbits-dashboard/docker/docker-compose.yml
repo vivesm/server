@@ -1,0 +1,57 @@
+services:
+  dashboard-backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: stringbits-dashboard-backend
+    ports:
+      - "100.112.235.46:3001:3000"  # Bind to Tailscale IP
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../docs:/app/docs:ro
+      - dashboard-data:/app/data
+    networks:
+      - stringbits_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  dashboard-frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: stringbits-dashboard-frontend
+    ports:
+      - "100.112.235.46:8090:80"  # Bind to Tailscale IP
+    environment:
+      - REACT_APP_API_URL=http://100.112.235.46:3001
+    depends_on:
+      - dashboard-backend
+    networks:
+      - stringbits_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+networks:
+  stringbits_net:
+    external: true
+    name: docker-compose_stringbits_net
+
+volumes:
+  dashboard-data:
+    driver: local
