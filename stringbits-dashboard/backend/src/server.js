@@ -53,6 +53,7 @@ app.use('/api/security', require('./routes/security'));
 app.use('/api/docs', require('./routes/documentation'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/todos', require('./routes/todos'));
+app.use('/api/claude', require('./routes/claude'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
