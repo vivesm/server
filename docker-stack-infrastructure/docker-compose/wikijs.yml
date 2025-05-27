@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  wikijs:
+    image: ghcr.io/requarks/wiki:2
+    container_name: wikijs
+    restart: unless-stopped
+    networks:
+      - stringbits_net
+    ports:
+      - "100.112.235.46:3000:3000"  # Tailscale only
+    environment:
+      - DB_TYPE=postgres
+      - DB_HOST=wikijs-db
+      - DB_PORT=5432
+      - DB_USER=wikijs
+      - DB_PASS=${WIKIJS_DB_PASS:-SecureWikiJsPass2025}
+      - DB_NAME=wiki
+      - WIKI_JS_SITE_URL=https://docs.stringbits.com
+    volumes:
+      - /home/melvin/projects/server/documentation:/wiki/content:ro  # Read-only mount of docs
+      - /home/melvin/projects/server/docker-stack-infrastructure:/wiki/infrastructure:ro
+      - wikijs_data:/wiki/data
+    depends_on:
+      - wikijs-db
+
+  wikijs-db:
+    image: postgres:15-alpine
+    container_name: wikijs-db
+    restart: unless-stopped
+    networks:
+      - stringbits_net
+    environment:
+      - POSTGRES_DB=wiki
+      - POSTGRES_USER=wikijs
+      - POSTGRES_PASSWORD=${WIKIJS_DB_PASS:-SecureWikiJsPass2025}
+    volumes:
+      - wikijs_db:/var/lib/postgresql/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "2"
+
+volumes:
+  wikijs_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/shared/docker/wikijs/data
+  wikijs_db:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/shared/docker/wikijs/db
+
+networks:
+  stringbits_net:
+    external: true
+    name: docker-compose_stringbits_net

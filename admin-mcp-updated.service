@@ -1,0 +1,15 @@
+[Unit]
+Description=Admin MCP (shell-exec channel)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=melvin
+Group=melvin
+WorkingDirectory=/opt/admin-mcp
+Environment=MCP_LISTEN=tcp://100.112.235.46:6201
+ExecStart=/usr/bin/claude mcp serve --agent ./exec-agent.js
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

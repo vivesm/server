@@ -1,0 +1,34 @@
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    ports:
+      # This will be updated by the start script to bind only to Tailscale IP
+      - "100.112.235.46:9443:9443"
+      - "100.112.235.46:8000:8000"
+    environment:
+      - PORTAINER_ADMIN_PASSWORD_FILE=/run/secrets/portainer_pass
+    secrets:
+      - portainer_pass
+    networks:
+      - portainer_net
+
+volumes:
+  portainer_data:
+
+networks:
+  portainer_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+secrets:
+  portainer_pass:
+    file: ./portainer_password.txt

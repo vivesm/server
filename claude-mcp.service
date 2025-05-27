@@ -1,0 +1,14 @@
+[Unit]
+Description=Claude MCP (AI channel)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=melvin
+Group=melvin
+ExecStart=/usr/bin/claude mcp serve --listen tcp://100.112.235.46:6101
+Restart=on-failure
+WorkingDirectory=/opt/claude
+
+[Install]
+WantedBy=multi-user.target

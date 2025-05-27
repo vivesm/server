@@ -1,0 +1,44 @@
+# Docker Stack Infrastructure .gitignore
+
+# Logs
+logs/
+*.log
+
+# Sensitive data
+.env
+*.key
+*.pem
+*.crt
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# n8n data
+n8n-data/
+
+# Database data
+mysql-data/
+
+# WordPress content
+wp-content/cache/
+wp-content/upgrade/
+wp-content/uploads/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock

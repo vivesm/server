@@ -1,0 +1,323 @@
+<h1>Persistent Remote Coding Environment via tmux</h1>
+<p><strong>For iPhone SSH Access to Ubuntu VPS</strong></p>
+
+<h2>🎯 Objective</h2>
+<p>Maintain persistent coding sessions on Ubuntu VPS via iPhone terminal apps, ensuring no work is lost during disconnections, app sleep, or network changes.</p>
+
+<h2>📱 Recommended iPhone Terminal Apps</h2>
+<ol>
+<li><strong>Blink Shell</strong> (Premium, best for coding)</li>
+<li><strong>Termius</strong> (Free with premium options)</li>
+<li><strong>a-Shell</strong> (Free, basic but functional)</li>
+</ol>
+
+<h2>🚀 Quick Start</h2>
+
+<h3>One-Time Setup (5 minutes)</h3>
+<pre class="wp-block-code"><code class="language-bash"># Install tmux and create automated setup
+curl -sSL https://raw.githubusercontent.com/yourusername/dotfiles/main/tmux-setup.sh | bash</code></pre>
+
+<p>Or manually:</p>
+
+<h2>📋 Phase 1: Environment Preparation</h2>
+
+<h3>1.1 Update System &amp; Install tmux</h3>
+<pre class="wp-block-code"><code class="language-bash"># Update package lists
+sudo apt update
+
+# Install tmux
+sudo apt install tmux -y
+
+# Verify installation
+tmux -V</code></pre>
+
+<h3>1.2 Create SSH Key for iPhone (if not done)</h3>
+<pre class="wp-block-code"><code class="language-bash"># On VPS, add your iPhone's SSH key to authorized_keys
+echo "YOUR_IPHONE_SSH_PUBLIC_KEY" >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys</code></pre>
+
+<h3>1.3 Configure SSH for Better Mobile Experience</h3>
+<pre class="wp-block-code"><code class="language-bash"># Edit SSH client config on VPS
+cat >> ~/.ssh/config &lt;&lt; 'EOF'
+Host *
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    TCPKeepAlive yes
+EOF</code></pre>
+
+<h2>🖥️ Phase 2: Create Persistent Session</h2>
+
+<h3>2.1 Basic Session Creation</h3>
+<pre class="wp-block-code"><code class="language-bash"># Start new session named 'vibe'
+tmux new -s vibe
+
+# Start with specific window name
+tmux new -s vibe -n coding</code></pre>
+
+<h3>2.2 Enhanced tmux Configuration</h3>
+<p>Create <code>~/.tmux.conf</code>:</p>
+<pre class="wp-block-code"><code class="language-bash">cat > ~/.tmux.conf &lt;&lt; 'EOF'
+# Better mobile experience
+set -g mouse on
+set -g history-limit 10000
+
+# Status bar customization
+set -g status-bg black
+set -g status-fg white
+set -g status-left '#[fg=green]#S '
+set -g status-right '#[fg=yellow]%H:%M %d-%b-%y'
+
+# Easy splitting
+bind | split-window -h
+bind - split-window -v
+
+# Reload config
+bind r source-file ~/.tmux.conf \; display "Config reloaded!"
+
+# Better copy mode for iPhone
+setw -g mode-keys vi
+bind -T copy-mode-vi v send -X begin-selection
+bind -T copy-mode-vi y send -X copy-selection-and-cancel
+
+# Prevent accidental detach
+bind-key d confirm-before -p "detach? (y/n)" detach
+
+# Activity monitoring
+setw -g monitor-activity on
+set -g visual-activity on
+
+# iPhone-friendly window switching
+bind-key -n C-n next-window
+bind-key -n C-p previous-window
+EOF</code></pre>
+
+<h2>📱 Phase 3: Disconnection Handling</h2>
+
+<h3>3.1 Essential Commands</h3>
+<ul>
+<li><strong>Detach session</strong> (keeps it running): <code>Ctrl + b, then d</code></li>
+<li><strong>List active sessions</strong>: <code>tmux ls</code></li>
+<li><strong>Reattach to session</strong>: <code>tmux attach -t vibe</code></li>
+<li><strong>Attach and detach others</strong>: <code>tmux attach -d -t vibe</code></li>
+</ul>
+
+<h3>3.2 Connection Recovery Script</h3>
+<pre class="wp-block-code"><code class="language-bash"># Create recovery script
+cat > ~/tmux-recover.sh &lt;&lt; 'EOF'
+#!/bin/bash
+# Auto-recover tmux session
+
+SESSION="vibe"
+
+# Check if session exists
+tmux has-session -t $SESSION 2>/dev/null
+
+if [ $? != 0 ]; then
+    # Create new session
+    tmux new-session -d -s $SESSION -n main
+    tmux send-keys -t $SESSION "cd ~/projects" C-m
+    tmux send-keys -t $SESSION "clear" C-m
+    echo "Created new session: $SESSION"
+else
+    echo "Session $SESSION exists"
+fi
+
+# Attach to session
+tmux attach -t $SESSION
+EOF
+
+chmod +x ~/tmux-recover.sh</code></pre>
+
+<h2>🤖 Phase 4: Automation</h2>
+
+<h3>4.1 Shell Aliases</h3>
+<pre class="wp-block-code"><code class="language-bash"># Add to ~/.bashrc
+cat >> ~/.bashrc &lt;&lt; 'EOF'
+
+# tmux aliases for mobile
+alias vibe='tmux attach -t vibe || tmux new -s vibe'
+alias tl='tmux ls'
+alias tn='tmux new -s'
+alias ta='tmux attach -t'
+alias tk='tmux kill-session -t'
+
+# Auto-attach on SSH login (optional)
+if [[ -n "$SSH_CLIENT" ]] && [[ -z "$TMUX" ]]; then
+    tmux attach -t vibe 2>/dev/null || tmux new -s vibe
+fi
+EOF
+
+# Reload bashrc
+source ~/.bashrc</code></pre>
+
+<h3>4.2 Create Session Templates</h3>
+<pre class="wp-block-code"><code class="language-bash"># Development environment setup
+cat > ~/tmux-dev.sh &lt;&lt; 'EOF'
+#!/bin/bash
+SESSION="dev"
+
+tmux new-session -d -s $SESSION -n editor
+tmux send-keys -t $SESSION:editor "cd ~/projects" C-m
+tmux send-keys -t $SESSION:editor "vim" C-m
+
+tmux new-window -t $SESSION -n terminal
+tmux send-keys -t $SESSION:terminal "cd ~/projects" C-m
+
+tmux new-window -t $SESSION -n logs
+tmux send-keys -t $SESSION:logs "tail -f /var/log/syslog" C-m
+
+tmux select-window -t $SESSION:editor
+tmux attach -t $SESSION
+EOF
+
+chmod +x ~/tmux-dev.sh</code></pre>
+
+<h2>🔧 Phase 5: Advanced Session Management</h2>
+
+<h3>5.1 Multiple Sessions Setup</h3>
+<pre class="wp-block-code"><code class="language-bash"># Create work environments
+cat > ~/tmux-workspaces.sh &lt;&lt; 'EOF'
+#!/bin/bash
+
+case "$1" in
+    "web")
+        tmux new -s web -n frontend -d
+        tmux new-window -t web -n backend
+        tmux new-window -t web -n database
+        tmux attach -t web
+        ;;
+    "ops")
+        tmux new -s ops -n monitor -d
+        tmux new-window -t ops -n logs
+        tmux new-window -t ops -n ssh
+        tmux attach -t ops
+        ;;
+    "list")
+        tmux ls
+        ;;
+    *)
+        echo "Usage: $0 {web|ops|list}"
+        ;;
+esac
+EOF
+
+chmod +x ~/tmux-workspaces.sh</code></pre>
+
+<h2>📱 iPhone-Specific Tips</h2>
+
+<h3>Touch-Friendly Key Bindings</h3>
+<pre class="wp-block-code"><code class="language-bash"># Add to ~/.tmux.conf
+# Use Option+Arrow for pane navigation (easier on iPhone)
+bind -n M-Left select-pane -L
+bind -n M-Right select-pane -R
+bind -n M-Up select-pane -U
+bind -n M-Down select-pane -D</code></pre>
+
+<h3>Blink Shell Configuration</h3>
+<p>In Blink Shell, create a host:</p>
+<ul>
+<li>Host: vps</li>
+<li>Hostname: your.server.ip</li>
+<li>User: yourusername</li>
+<li>Key: your-key</li>
+</ul>
+<p>Then connect with: <code>mosh vps -- tmux attach -t vibe</code></p>
+
+<h2>🛡️ Security Considerations</h2>
+
+<h3>Secure Your Sessions</h3>
+<pre class="wp-block-code"><code class="language-bash"># Lock session when away
+# Ctrl+b, x (requires password to unlock)
+
+# Set lock command in ~/.tmux.conf
+set -g lock-command vlock
+set -g lock-after-time 300  # 5 minutes</code></pre>
+
+<h2>🚨 Troubleshooting</h2>
+
+<h3>Common Issues:</h3>
+<ol>
+<li><strong>"sessions should be nested with care"</strong>
+<pre class="wp-block-code"><code class="language-bash"># Exit current tmux before starting new
+exit  # or Ctrl+d</code></pre>
+</li>
+<li><strong>Can't create session</strong>
+<pre class="wp-block-code"><code class="language-bash"># Check for existing sessions
+tmux ls
+# Kill all sessions
+tmux kill-server</code></pre>
+</li>
+<li><strong>Lost in tmux</strong>
+<pre class="wp-block-code"><code class="language-bash"># Show current session info
+Ctrl+b, i</code></pre>
+</li>
+</ol>
+
+<h2>🎯 Quick Reference Card</h2>
+
+<table class="wp-block-table">
+<thead>
+<tr>
+<th>Action</th>
+<th>Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>New session</td>
+<td><code>tmux new -s name</code></td>
+</tr>
+<tr>
+<td>List sessions</td>
+<td><code>tmux ls</code></td>
+</tr>
+<tr>
+<td>Attach</td>
+<td><code>tmux attach -t name</code></td>
+</tr>
+<tr>
+<td>Detach</td>
+<td><code>Ctrl+b, d</code></td>
+</tr>
+<tr>
+<td>New window</td>
+<td><code>Ctrl+b, c</code></td>
+</tr>
+<tr>
+<td>Next window</td>
+<td><code>Ctrl+b, n</code></td>
+</tr>
+<tr>
+<td>Split horizontal</td>
+<td><code>Ctrl+b, %</code></td>
+</tr>
+<tr>
+<td>Split vertical</td>
+<td><code>Ctrl+b, "</code></td>
+</tr>
+<tr>
+<td>Switch pane</td>
+<td><code>Ctrl+b, arrow</code></td>
+</tr>
+<tr>
+<td>Kill pane</td>
+<td><code>Ctrl+b, x</code></td>
+</tr>
+<tr>
+<td>Zoom pane</td>
+<td><code>Ctrl+b, z</code></td>
+</tr>
+</tbody>
+</table>
+
+<h2>🎉 You're Ready!</h2>
+
+<p>With this setup, you can:</p>
+<ul>
+<li>Code from your iPhone anywhere</li>
+<li>Never lose work due to disconnections</li>
+<li>Manage multiple projects simultaneously</li>
+<li>Collaborate with team members</li>
+</ul>
+
+<p>Just type <code>vibe</code> to start coding!</p>

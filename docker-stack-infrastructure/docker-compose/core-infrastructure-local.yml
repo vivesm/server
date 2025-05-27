@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  portainer-stack:
+    image: portainer/portainer-ce:latest
+    container_name: portainer-stack
+    restart: always
+    # Only expose Portainer on Tailscale network
+    ports:
+      - "100.112.235.46:9444:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_stack_data:/data
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    networks:
+      - stringbits_net
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --cleanup --interval 300 --label-enable
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    networks:
+      - stringbits_net
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /home/melvin/projects/server/docker-stack-infrastructure/caddy/config/Caddyfile.local:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    networks:
+      - stringbits_net
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: always
+    ports:
+      - "100.112.235.46:5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=changeme
+      - N8N_HOST=100.112.235.46
+      - N8N_PROTOCOL=http
+      - N8N_PORT=5678
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://100.112.235.46:5678/
+    volumes:
+      - n8n_data:/home/node/.n8n
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    networks:
+      - stringbits_net
+
+volumes:
+  portainer_stack_data:
+  caddy_data:
+  caddy_config:
+  n8n_data:
+
+networks:
+  stringbits_net:
+    external: true

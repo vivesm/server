@@ -1,0 +1,140 @@
+# Global options
+(security_headers) {
+    header {
+        # Enable HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Disable content-type sniffing
+        X-Content-Type-Options "nosniff"
+        # XSS protection
+        X-XSS-Protection "1; mode=block"
+        # Frame options
+        X-Frame-Options "SAMEORIGIN"
+        # Referrer policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Content Security Policy
+        Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self'; font-src 'self' data:; frame-ancestors 'self';"
+        # Remove server information
+        -Server
+    }
+}
+
+# WordPress-specific headers (more permissive)
+(wordpress_headers) {
+    header {
+        # Enable HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Disable content-type sniffing
+        X-Content-Type-Options "nosniff"
+        # XSS protection
+        X-XSS-Protection "1; mode=block"
+        # Frame options
+        X-Frame-Options "SAMEORIGIN"
+        # Referrer policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Remove CSP for WordPress to allow all content
+        # Content-Security-Policy header removed for WordPress compatibility
+        # Remove server information
+        -Server
+    }
+}
+
+n8n.stringbits.com {
+    import security_headers
+    reverse_proxy n8n:443
+}
+
+docs.stringbits.com {
+    import security_headers
+    reverse_proxy gollum:4567
+}
+
+wp.stringbits.com {
+    import wordpress_headers
+    reverse_proxy wordpress:80
+}
+
+ptn.stringbits.com {
+    import security_headers
+    
+    # Only allow access from Tailscale network
+    @tailscale {
+        remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+    }
+    
+    # Deny access from non-Tailscale IPs
+    @non_tailscale {
+        not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+    }
+    
+    respond @non_tailscale 403 {
+        body "Access to Portainer is restricted to Tailscale network only"
+    }
+    
+    reverse_proxy @tailscale portainer:9443 {
+        transport http {
+            tls_insecure_skip_verify
+        }
+    }
+}
+
+# No public API endpoint - Portainer API is accessible directly through the UI
+
+# Git repository is only accessed internally
+# Skip external domain that doesn't have DNS record
+
+rd.stringbits.com {
+    import security_headers
+    
+    # RustDesk web client routes all traffic to the HBBS server
+    # Disable connection checks since the endpoint is available but returns empty response
+    handle_errors {
+        respond "RustDesk server is running. Use the RustDesk client to connect." 200
+    }
+    
+    reverse_proxy rustdesk-hbbs:21118 {
+        header_up Host {upstream_hostport}
+        header_up X-Real-IP {remote_host}
+        transport http {
+            keepalive 2h
+        }
+    }
+}
+
+# MCP Services - Tailscale only access
+mcp-ai.stringbits.com {
+    import security_headers
+    
+    # Only allow access from Tailscale network
+    @tailscale {
+        remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+    }
+    
+    @non_tailscale {
+        not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+    }
+    
+    respond @non_tailscale 403 {
+        body "Access to MCP AI service is restricted to Tailscale network only"
+    }
+    
+    reverse_proxy @tailscale claude-mcp:6101
+}
+
+mcp-admin.stringbits.com {
+    import security_headers
+    
+    # Only allow access from Tailscale network
+    @tailscale {
+        remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+    }
+    
+    @non_tailscale {
+        not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+    }
+    
+    respond @non_tailscale 403 {
+        body "Access to MCP Admin service is restricted to Tailscale network only"
+    }
+    
+    reverse_proxy @tailscale admin-mcp:6201
+}

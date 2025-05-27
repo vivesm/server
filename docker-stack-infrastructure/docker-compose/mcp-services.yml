@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  claude-mcp:
+    image: node:20-alpine
+    container_name: claude-mcp
+    restart: always
+    working_dir: /app
+    volumes:
+      - /opt/claude:/app
+      - /home/melvin/.claude:/home/node/.claude
+    environment:
+      - NODE_ENV=production
+      - MCP_LISTEN=tcp://0.0.0.0:6101
+    ports:
+      - "100.112.235.46:6101:6101"
+    command: ["sh", "-c", "npm install -g @anthropic-ai/claude-code && claude mcp serve"]
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    networks:
+      - stringbits_net
+      - docker_stringbits_net
+
+  admin-mcp:
+    image: node:20-alpine
+    container_name: admin-mcp
+    restart: always
+    working_dir: /app
+    volumes:
+      - /opt/admin-mcp:/app
+      - /home/melvin/.claude:/home/node/.claude
+    environment:
+      - NODE_ENV=production
+      - MCP_LISTEN=tcp://0.0.0.0:6201
+    ports:
+      - "100.112.235.46:6201:6201"
+    command: ["sh", "-c", "npm install -g @anthropic-ai/claude-code && claude mcp serve --agent ./exec-agent.js"]
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    networks:
+      - stringbits_net
+      - docker_stringbits_net
+
+networks:
+  stringbits_net:
+    external: true
+  docker_stringbits_net:
+    external: true

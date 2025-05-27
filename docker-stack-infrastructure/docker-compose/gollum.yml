@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  gollum:
+    image: gollumwiki/gollum:latest
+    container_name: gollum
+    restart: unless-stopped
+    networks:
+      - stringbits_net
+    ports:
+      - "100.112.235.46:4567:4567"  # Tailscale only
+    volumes:
+      # Mount documentation directory as the wiki root
+      - /home/melvin/projects/server/documentation:/wiki
+      # Mount the full project as read-only for reference
+      - /home/melvin/projects/server:/project:ro
+      # Custom CSS for better styling
+      - ./gollum-config:/config
+    environment:
+      # Wiki configuration
+      - GOLLUM_AUTHOR_USERNAME=Infrastructure Team
+      - GOLLUM_AUTHOR_EMAIL=admin@stringbits.com
+      - WIKI_TITLE=Infrastructure Documentation
+      # Authentication (optional - uncomment to enable)
+      # - GOLLUM_AUTH_USERNAME=admin
+      # - GOLLUM_AUTH_PASSWORD=changeme
+    command: [
+      "--port", "4567",
+      "--host", "0.0.0.0",
+      "--math", "mathjax",   # Math formulas support (updated syntax)
+      "--emoji",             # Emoji support :+1:
+      "--h1-title",          # Use first H1 as page title
+      "--css",               # Custom CSS support
+      "--js"                 # Custom JS support
+      # Note: --no-edit removed to enable editing
+    ]
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+networks:
+  stringbits_net:
+    external: true
+    name: docker-compose_stringbits_net

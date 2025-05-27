@@ -1,0 +1,40 @@
+# Global options
+(security_headers) {
+    header {
+        # Enable HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Disable content-type sniffing
+        X-Content-Type-Options "nosniff"
+        # XSS protection
+        X-XSS-Protection "1; mode=block"
+        # Frame options
+        X-Frame-Options "SAMEORIGIN"
+        # Referrer policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Remove server information
+        -Server
+    }
+}
+
+# n8n on port 8080
+http://100.112.235.46:8080 {
+    import security_headers
+    reverse_proxy n8n:5678
+}
+
+# WordPress on port 8081
+http://100.112.235.46:8081 {
+    import security_headers
+    reverse_proxy wordpress:80
+}
+
+# Alternative access via localhost for development
+http://localhost:8080 {
+    import security_headers
+    reverse_proxy n8n:5678
+}
+
+http://localhost:8081 {
+    import security_headers
+    reverse_proxy wordpress:80
+}
